@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="FlowerShopApp.Api/FlowerShopApp.Api.csproj" />
+  <Project Path="FlowerShopApp.Application/FlowerShopApp.Application.csproj" />
+  <Project Path="FlowerShopApp.Domain/FlowerShopApp.Domain.csproj" />
+  <Project Path="FlowerShopApp.Infrastructure/FlowerShopApp.Infrastructure.csproj" />
+</Solution>
