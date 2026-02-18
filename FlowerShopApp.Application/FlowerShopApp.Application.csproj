@@ -6,4 +6,18 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Commons\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.0" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlowerShopApp.Domain\FlowerShopApp.Domain.csproj" />
+    <ProjectReference Include="..\FlowerShopApp.Infrastructure\FlowerShopApp.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
