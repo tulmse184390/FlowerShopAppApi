@@ -17,6 +17,10 @@ namespace FlowerShopApp.Application.Mappings
                 .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src =>
                     src.ProductImages.FirstOrDefault(x => x.IsPrimary).ImageUrl
                     ?? src.ProductImages.FirstOrDefault().ImageUrl));
+
+            CreateMap<Product, ProductDetailDto>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.CategoryName))
+                .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.ProductImages.Select(x => x.ImageUrl).ToList()));
         }
     }
 }

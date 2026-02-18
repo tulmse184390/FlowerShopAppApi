@@ -21,5 +21,18 @@ namespace FlowerShopApp.Api.Controllers
             var products = await _productService.GetProductsAsync(paramsDto);
             return Ok(products);
         }
+
+        [HttpGet("{id}")] 
+        public async Task<IActionResult> GetProductDetail(int id)
+        {
+            var product = await _productService.GetProductByIdAsync(id);
+
+            if (product == null)
+            {
+                return NotFound(new { message = "The product does not exist!" });
+            }
+
+            return Ok(product);
+        }
     }
 }

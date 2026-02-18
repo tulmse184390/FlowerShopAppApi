@@ -19,6 +19,18 @@ namespace FlowerShopApp.Application.Services
             _mapper = mapper;
         }
 
+        public async Task<ProductDetailDto?> GetProductByIdAsync(int id)
+        {
+            var product = await _unitOfWork.Products.Entities
+                .Include(x => x.Category)       
+                .Include(x => x.ProductImages)  
+                .FirstOrDefaultAsync(x => x.ProductId == id && !x.IsDeleted);
+
+            if (product == null) return null;
+
+            return _mapper.Map<ProductDetailDto>(product);
+        }
+
         public async Task<PagedResult<ProductDto>> GetProductsAsync(ProductParams paramsDto)
         {
             var query = _unitOfWork.Products.Entities
