@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FlowerShopApp.Application.DTOs.Auth;
 using FlowerShopApp.Application.DTOs.Cart;
+using FlowerShopApp.Application.DTOs.Orders;
 using FlowerShopApp.Application.DTOs.Products;
 using FlowerShopApp.Domain.Entities;
 
@@ -33,6 +34,18 @@ namespace FlowerShopApp.Application.Mappings
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.CartItems))
                 .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src =>
                     src.CartItems.Sum(x => x.Price * x.Quantity)));
+
+            CreateMap<Order, OrderHistoryDto>()
+                .ForMember(dest => dest.ItemCount, opt => opt.MapFrom(src => src.OrderItems.Sum(x => x.Quantity)))
+                .ForMember(dest => dest.Thumbnail, opt => opt.MapFrom(src =>
+                    src.OrderItems.FirstOrDefault().Product.ProductImages.FirstOrDefault(x => x.IsPrimary).ImageUrl
+                    ?? "https://via.placeholder.com/150"));
+
+            CreateMap<OrderItem, OrderItemDto>()
+                .ForMember(dest => dest.ProductImage, opt => opt.MapFrom(src =>
+                    src.Product.ProductImages.FirstOrDefault(x => x.IsPrimary).ImageUrl));
+
+            CreateMap<Order, OrderDetailDto>();
         }
     }
 }

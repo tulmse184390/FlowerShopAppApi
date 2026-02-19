@@ -141,5 +141,11 @@ namespace FlowerShopApp.Infrastructure.Implements
         {
             _context.Dispose();
         }
+
+        public IGlobalTransaction BeginTransaction()
+        {
+            var dbTransaction = _context.Database.BeginTransaction();
+            return new EfGlobalTransaction(dbTransaction);
+        }
     }
 }

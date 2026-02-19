@@ -19,5 +19,6 @@ namespace FlowerShopApp.Domain.Interfaces
         IGenericRepository<StoreLocation> StoreLocations { get; }   
 
         Task<int> CompleteAsync();
+        IGlobalTransaction BeginTransaction();
     }
 }
