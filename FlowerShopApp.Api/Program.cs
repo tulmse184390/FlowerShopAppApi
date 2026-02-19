@@ -1,3 +1,4 @@
+using FlowerShopApp.Api.Hubs;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Application.Mappings;
 using FlowerShopApp.Application.Services;
@@ -88,6 +89,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.MapHub<ChatHub>("/chatHub");
 
 app.UseHttpsRedirection();
 
