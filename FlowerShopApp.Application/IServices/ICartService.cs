@@ -9,5 +9,6 @@ namespace FlowerShopApp.Application.IServices
         Task<bool> UpdateQuantityAsync(int userId, UpdateCartDto request);
         Task<bool> RemoveItemAsync(int userId, int productId);
         Task<bool> ClearCartAsync(int userId);
+        Task<int> GetCartItemCountAsync(int userId);
     }
 }

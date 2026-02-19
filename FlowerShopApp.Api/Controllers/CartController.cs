@@ -100,5 +100,24 @@ namespace FlowerShopApp.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet("count")] 
+        public async Task<IActionResult> GetCartItemCount()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim == null) return Ok(new { count = 0 });
+
+                int userId = int.Parse(userIdClaim.Value);
+                var count = await _cartService.GetCartItemCountAsync(userId);
+
+                return Ok(new { count = count });
+            }
+            catch (Exception)
+            {
+                return Ok(new { count = 0 }); 
+            }
+        }
     }
 }

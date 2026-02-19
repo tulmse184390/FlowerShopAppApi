@@ -145,5 +145,15 @@ namespace FlowerShopApp.Application.Services
             await _unitOfWork.CompleteAsync();
             return true;
         }
+
+        public async Task<int> GetCartItemCountAsync(int userId)
+        {
+            var count = await _unitOfWork.Carts.Entities
+                .Where(c => c.UserId == userId && c.Status == "Active")
+                .SelectMany(c => c.CartItems) 
+                .SumAsync(ci => ci.Quantity);
+
+            return count;
+        }
     }
 }
