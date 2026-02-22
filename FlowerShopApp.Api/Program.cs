@@ -30,7 +30,10 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();    
 builder.Services.AddScoped<IStoreService, StoreService>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -92,7 +95,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHub<ChatHub>("/chatHub");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthentication();    
 

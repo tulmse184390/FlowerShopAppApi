@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FlowerShopApp.Application.DTOs.Auth;
 using FlowerShopApp.Application.DTOs.Cart;
+using FlowerShopApp.Application.DTOs.Categories;
 using FlowerShopApp.Application.DTOs.Orders;
 using FlowerShopApp.Application.DTOs.Products;
 using FlowerShopApp.Application.DTOs.Store;
@@ -51,6 +52,8 @@ namespace FlowerShopApp.Application.Mappings
             CreateMap<StoreLocation, StoreLocationDto>()
                 .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => (double)src.Latitude))
                 .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => (double)src.Longitude));
+
+            CreateMap<Category, CategoryDto>();    
         }
     }
 }
