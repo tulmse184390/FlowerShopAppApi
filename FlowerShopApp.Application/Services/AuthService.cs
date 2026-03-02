@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using FlowerShopApp.Application.DTOs;
 using FlowerShopApp.Application.DTOs.Auth;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Domain.Entities;
@@ -23,11 +24,11 @@ namespace FlowerShopApp.Application.Services
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
         {
             var isExist = await _unitOfWork.Users.Entities
-                .AnyAsync(x => x.UserName == request.UserName);
+                .AnyAsync(x => x.UserName.ToLower() == request.UserName.ToLower());
 
             if (isExist)
             {
-                throw new Exception("Username already exists!");
+                throw new AppException("Username already exists!");
             }
 
             var user = _mapper.Map<User>(request);
@@ -45,11 +46,11 @@ namespace FlowerShopApp.Application.Services
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
         {
             var user = await _unitOfWork.Users.Entities
-                .FirstOrDefaultAsync(x => x.UserName == request.UserName);
+                .FirstOrDefaultAsync(x => x.UserName.ToLower() == request.UserName.ToLower());
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                throw new Exception("Username or password is incorrect!");
+                throw new AppException("Username or password is incorrect!");
             }
 
             var response = _mapper.Map<AuthResponseDto>(user);

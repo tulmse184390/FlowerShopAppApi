@@ -34,9 +34,10 @@ namespace FlowerShopApp.Infrastructure
                 e.HasIndex(x => x.UserName).IsUnique();
 
                 e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
+                e.Property(x => x.FullName).HasMaxLength(100).IsRequired(); 
                 e.Property(x => x.Email).HasMaxLength(100);
-                e.Property(x => x.PhoneNumber).HasMaxLength(15);
-                e.Property(x => x.Address).HasMaxLength(255);
+                e.Property(x => x.PhoneNumber).HasMaxLength(15).IsRequired();
+                e.Property(x => x.Address).HasMaxLength(255).IsRequired();
 
                 e.Property(x => x.Role).HasMaxLength(20).HasDefaultValue("USER"); 
                 e.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP"); 

@@ -1,6 +1,6 @@
-﻿using FlowerShopApp.Application.DTOs.Auth;
+﻿using FlowerShopApp.Application.DTOs;
+using FlowerShopApp.Application.DTOs.Auth;
 using FlowerShopApp.Application.IServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlowerShopApp.Api.Controllers
@@ -22,11 +22,30 @@ namespace FlowerShopApp.Api.Controllers
             try
             {
                 var result = await _authService.RegisterAsync(request);
-                return Ok(result); 
+                return Ok(new ApiResponse<AuthResponseDto>
+                {
+                    Success = true,
+                    Message = "Sign up successfully!",
+                    Data = result
+                });
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null 
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null 
+                });
             }
         }
 
@@ -36,11 +55,30 @@ namespace FlowerShopApp.Api.Controllers
             try
             {
                 var result = await _authService.LoginAsync(request);
-                return Ok(result);
+                return Ok(new ApiResponse<AuthResponseDto>
+                {
+                    Success = true,
+                    Message = "Sign in successfully!",
+                    Data = result
+                });
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
             }
         }
     }
