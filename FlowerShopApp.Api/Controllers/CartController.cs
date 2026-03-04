@@ -1,4 +1,5 @@
-﻿using FlowerShopApp.Application.DTOs.Cart;
+﻿using FlowerShopApp.Application.DTOs;
+using FlowerShopApp.Application.DTOs.Cart;
 using FlowerShopApp.Application.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,11 +30,19 @@ namespace FlowerShopApp.Api.Controllers
                 int userId = int.Parse(userIdClaim.Value);
 
                 await _cartService.AddToCartAsync(userId, request);
-                return Ok(new { message = "Add to cart successfully!" });
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Add to cart successfully!"
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
@@ -48,60 +57,93 @@ namespace FlowerShopApp.Api.Controllers
                 int userId = int.Parse(userIdClaim.Value);
 
                 var cart = await _cartService.GetCartByUserIdAsync(userId);
-                return Ok(cart);
+                return Ok(new ApiResponse<CartDto>
+                {
+                    Success = true,
+                    Message = "Success",
+                    Data = cart
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
-        [HttpPut("update")] 
+        [HttpPut("update")]
         public async Task<IActionResult> UpdateQuantity([FromBody] UpdateCartDto request)
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 await _cartService.UpdateQuantityAsync(userId, request);
-                return Ok(new { message = "Cart updated successfully." });
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Cart updated successfully."
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
-        [HttpDelete("remove/{productId}")] 
+        [HttpDelete("remove/{productId}")]
         public async Task<IActionResult> RemoveItem(int productId)
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 await _cartService.RemoveItemAsync(userId, productId);
-                return Ok(new { message = "Item removed from cart." });
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Item removed from cart."
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
-        [HttpDelete("clear")] 
+        [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart()
         {
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 await _cartService.ClearCartAsync(userId);
-                return Ok(new { message = "Cart cleared successfully." });
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Cart cleared successfully."
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
-        [HttpGet("count")] 
+        [HttpGet("count")]
         public async Task<IActionResult> GetCartItemCount()
         {
             try
@@ -112,11 +154,19 @@ namespace FlowerShopApp.Api.Controllers
                 int userId = int.Parse(userIdClaim.Value);
                 var count = await _cartService.GetCartItemCountAsync(userId);
 
-                return Ok(new { count = count });
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = count
+                });
             }
             catch (Exception)
             {
-                return Ok(new { count = 0 }); 
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = 0
+                });
             }
         }
     }
