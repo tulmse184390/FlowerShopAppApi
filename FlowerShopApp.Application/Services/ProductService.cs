@@ -4,7 +4,6 @@ using FlowerShopApp.Application.DTOs.Products;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FlowerShopApp.Application.Services
 {
@@ -35,6 +34,7 @@ namespace FlowerShopApp.Application.Services
         {
             var query = _unitOfWork.Products.Entities
                 .Include(x => x.Category)
+                .Include(x => x.ProductImages)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(paramsDto.Search))

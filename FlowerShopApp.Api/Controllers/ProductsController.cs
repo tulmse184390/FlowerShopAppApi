@@ -1,4 +1,5 @@
-﻿using FlowerShopApp.Application.DTOs.Products;
+﻿using FlowerShopApp.Application.DTOs;
+using FlowerShopApp.Application.DTOs.Products;
 using FlowerShopApp.Application.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +20,12 @@ namespace FlowerShopApp.Api.Controllers
         public async Task<IActionResult> GetProducts([FromQuery] ProductParams paramsDto)
         {
             var products = await _productService.GetProductsAsync(paramsDto);
-            return Ok(products);
+            return Ok(new ApiResponse<PagedResult<ProductDto>>
+            {
+                Success = true,
+                Message = "Get a list of products successfullly!",
+                Data = products
+            });
         }
 
         [HttpGet("{id}")] 
@@ -29,10 +35,20 @@ namespace FlowerShopApp.Api.Controllers
 
             if (product == null)
             {
-                return NotFound(new { message = "The product does not exist!" });
+                return NotFound(new ApiResponse<ProductDetailDto>
+                {
+                    Success = false,
+                    Message = "The product does not exist!",
+                    Data = null
+                });
             }
 
-            return Ok(product);
+            return Ok(new ApiResponse<ProductDetailDto>
+            {
+                Success = true,
+                Message = "Successfully retrieved product details!",
+                Data = product
+            });
         }
     }
 }

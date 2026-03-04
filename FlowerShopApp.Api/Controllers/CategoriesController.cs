@@ -1,7 +1,6 @@
-﻿using FlowerShopApp.Application.DTOs.Products;
+﻿using FlowerShopApp.Application.DTOs;
+using FlowerShopApp.Application.DTOs.Categories;
 using FlowerShopApp.Application.IServices;
-using FlowerShopApp.Application.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlowerShopApp.Api.Controllers
@@ -20,8 +19,13 @@ namespace FlowerShopApp.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllCategories()
         {
-            var products = await _categoryService.GetAllCategoriesAsync();
-            return Ok(products);
+            var cates = await _categoryService.GetAllCategoriesAsync();
+            return Ok(new ApiResponse<List<CategoryDto>>
+            {
+                Success = true,
+                Message = "Get a list of categories successfully!",
+                Data = cates
+            });
         }
     }
 }
