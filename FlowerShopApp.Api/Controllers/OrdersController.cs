@@ -1,4 +1,5 @@
-﻿using FlowerShopApp.Application.DTOs.Orders;
+﻿using FlowerShopApp.Application.DTOs;
+using FlowerShopApp.Application.DTOs.Orders;
 using FlowerShopApp.Application.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,34 +27,32 @@ namespace FlowerShopApp.Api.Controllers
             try
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
                 var orderId = await _orderService.CreateOrderAsync(userId, request);
-
                 var order = await _orderService.GetOrderByIdAsync(orderId);
+
+                var responseData = new CheckoutResponseDto { OrderId = orderId };
 
                 if (request.PaymentMethod == "VNPAY")
                 {
-                    var paymentUrl = _vnPayService.CreatePaymentUrl(HttpContext, order);
-
-                    return Ok(new
+                    responseData.PaymentUrl = _vnPayService.CreatePaymentUrl(HttpContext, order);
+                    return Ok(new ApiResponse<CheckoutResponseDto>
                     {
-                        status = "success",
-                        orderId = orderId,
-                        paymentUrl = paymentUrl,
-                        message = "Redirect to payment gateway"
+                        Success = true,
+                        Message = "Redirect to payment gateway",
+                        Data = responseData
                     });
                 }
 
-                return Ok(new
+                return Ok(new ApiResponse<CheckoutResponseDto>
                 {
-                    status = "success",
-                    orderId = orderId,
-                    message = "Order placed successfully"
+                    Success = true,
+                    Message = "Order placed successfully",
+                    Data = responseData
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string> { Success = false, Message = ex.Message });
             }
         }
 
@@ -82,11 +81,19 @@ namespace FlowerShopApp.Api.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 var orders = await _orderService.GetMyOrdersAsync(userId);
-                return Ok(orders);
+                return Ok(new ApiResponse<List<OrderHistoryDto>>
+                {
+                    Success = true,
+                    Data = orders
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
 
@@ -97,11 +104,19 @@ namespace FlowerShopApp.Api.Controllers
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 var order = await _orderService.GetOrderDetailsAsync(userId, id);
-                return Ok(order);
+                return Ok(new ApiResponse<OrderDetailDto>
+                {
+                    Success = true,
+                    Data = order
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
             }
         }
     }
