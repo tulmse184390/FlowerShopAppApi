@@ -1,4 +1,5 @@
 using FlowerShopApp.Api.Hubs;
+using FlowerShopApp.Application.Commons.Settings;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Application.Mappings;
 using FlowerShopApp.Application.Services;
@@ -7,6 +8,7 @@ using FlowerShopApp.Infrastructure;
 using FlowerShopApp.Infrastructure.Implements;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -30,9 +32,11 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();    
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IStoreService, StoreService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddHttpClient<IAIVisionService, GroqService>();
+builder.Services.AddHttpClient<IAIChatService, GroqService>();
 builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -49,7 +53,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]!))
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.Configure<GroqSettings>(builder.Configuration.GetSection(GroqSettings.SectionName));
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -97,7 +120,7 @@ app.MapHub<ChatHub>("/chatHub");
 
 //app.UseHttpsRedirection();
 
-app.UseAuthentication();    
+app.UseAuthentication();
 
 app.UseAuthorization();
 

@@ -1,4 +1,4 @@
-﻿using FlowerShopApp.Application.DTOs.Chat;
+using FlowerShopApp.Application.DTOs.Chat;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Domain.Entities;
 using FlowerShopApp.Domain.Interfaces;
@@ -54,6 +54,23 @@ namespace FlowerShopApp.Application.Services
                     SentAt = m.SentAt
                 })
                 .ToListAsync();
+        }
+
+        public async Task<bool> IsRoomAIAssistedAsync(int roomId)
+        {
+            var room = await _unitOfWork.ChatRooms.Entities.FirstOrDefaultAsync(r => r.RoomId == roomId);
+            return room?.IsAIAssisted ?? true;
+        }
+
+        public async Task ToggleAIAssistanceAsync(int roomId, bool isAIAssisted)
+        {
+            var room = await _unitOfWork.ChatRooms.Entities.FirstOrDefaultAsync(r => r.RoomId == roomId);
+            if (room != null)
+            {
+                room.IsAIAssisted = isAIAssisted;
+                _unitOfWork.ChatRooms.Update(room);
+                await _unitOfWork.CompleteAsync();
+            }
         }
     }
 }

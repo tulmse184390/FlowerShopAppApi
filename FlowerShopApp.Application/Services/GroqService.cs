@@ -1,0 +1,462 @@
+using FlowerShopApp.Application.Commons.Settings;
+using FlowerShopApp.Application.IServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+
+
+
+namespace FlowerShopApp.Application.Services
+{
+    public class GroqService : IAIVisionService, IAIChatService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly GroqSettings _settings;
+        private readonly JwtSettings _jwtSettings;
+        private readonly ILogger<GroqService> _logger;
+
+        public GroqService(
+            HttpClient httpClient,
+            IOptions<GroqSettings> settings,
+            IOptions<JwtSettings> jwtSettings,
+            ILogger<GroqService> logger)
+        {
+            _httpClient = httpClient;
+            _settings = settings.Value;
+            _jwtSettings = jwtSettings.Value; 
+            _logger = logger;
+        }
+
+        /// <inheritdoc/>
+        public bool IsAvailable()
+        {
+            return _settings.IsEnabled && !string.IsNullOrWhiteSpace(_settings.ApiKey);
+        }
+
+        /// <inheritdoc/>
+        public string GetModelName() => _settings.Model ?? "unknown";
+
+        /// <inheritdoc/>
+        public string GetProviderName() => "Groq";
+
+        /// <inheritdoc/>
+        public async Task<AIAnalysisResult> AnalyzePlantImageAsync(
+            string? imageBase64,
+            string? imageUrl,
+            string? userDescription,
+            string language = "vi")
+        {
+            var result = new AIAnalysisResult
+            {
+                DebugInfo = new AIDebugInfo
+                {
+                    Provider = "Groq",
+                    Model = _settings.Model,
+                    HasImage = !string.IsNullOrWhiteSpace(imageBase64) || !string.IsNullOrWhiteSpace(imageUrl)
+                }
+            };
+
+            if (!IsAvailable())
+            {
+                _logger.LogWarning("Groq service is not available. Check API key configuration.");
+                result.DebugInfo.ErrorSource = "App";
+                result.DebugInfo.ErrorMessage = "Service not available. API key not configured or service disabled.";
+                return result;
+            }
+
+            try
+            {
+                var hasImage = result.DebugInfo.HasImage;
+                var messages = BuildMessages(userDescription, language, hasImage, imageBase64, imageUrl);
+                var requestBody = BuildRequestBody(messages);
+
+                var url = $"{_settings.BaseUrl}/chat/completions";
+
+                var jsonContent = JsonSerializer.Serialize(requestBody);
+                _logger.LogInformation("Calling Groq API. HasImage: {HasImage}, Model: {Model}", hasImage, _settings.Model);
+
+                // Set Authorization header
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.ApiKey}");
+
+                var response = await _httpClient.PostAsync(url,
+                    new StringContent(jsonContent, Encoding.UTF8, "application/json"));
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                result.DebugInfo.HttpStatusCode = (int)response.StatusCode;
+
+                // Truncate raw response for debug (max 500 chars)
+                result.DebugInfo.RawResponse = responseContent.Length > 500
+                    ? responseContent.Substring(0, 500) + "..."
+                    : responseContent;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Groq API error: {StatusCode} - {Error}", response.StatusCode, responseContent);
+                    result.DebugInfo.ErrorSource = "AI";
+
+                    // Parse error for better info
+                    try
+                    {
+                        using var errorDoc = JsonDocument.Parse(responseContent);
+                        if (errorDoc.RootElement.TryGetProperty("error", out var error))
+                        {
+                            result.DebugInfo.ErrorMessage = error.TryGetProperty("message", out var msg)
+                                ? msg.GetString()
+                                : "Unknown error";
+
+                            if ((int)response.StatusCode == 429)
+                            {
+                                _logger.LogWarning("Groq API rate limit exceeded. Please wait.");
+                            }
+                        }
+                    }
+                    catch { /* Ignore parse errors */ }
+
+                    return result;
+                }
+
+                _logger.LogInformation("Groq API response received. Length: {Length}", responseContent.Length);
+
+                var extractedContent = ExtractContentFromResponse(responseContent);
+                if (extractedContent != null)
+                {
+                    result.IsSuccess = true;
+                    result.Content = extractedContent;
+                }
+                else
+                {
+                    result.DebugInfo.ErrorSource = "App";
+                    result.DebugInfo.ErrorMessage = "Failed to extract content from Groq response";
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Groq API");
+                result.DebugInfo.ErrorSource = "App";
+                result.DebugInfo.ErrorMessage = $"Exception: {ex.Message}";
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Build messages array for Groq API (OpenAI-compatible format)
+        /// </summary>
+        private List<object> BuildMessages(string? userDescription, string language, bool hasImage, string? imageBase64, string? imageUrl)
+        {
+            var systemPrompt = BuildSystemPrompt(language);
+            var userPrompt = BuildUserPrompt(userDescription, hasImage);
+
+            var messages = new List<object>
+        {
+            new { role = "system", content = systemPrompt }
+        };
+
+            // Build user message with optional image
+            if (hasImage)
+            {
+                var contentParts = new List<object>
+            {
+                new { type = "text", text = userPrompt }
+            };
+
+                // Add image
+                if (!string.IsNullOrWhiteSpace(imageBase64))
+                {
+                    var imageData = imageBase64;
+                    if (!imageBase64.StartsWith("data:"))
+                    {
+                        imageData = $"data:image/jpeg;base64,{imageBase64}";
+                    }
+
+                    contentParts.Add(new
+                    {
+                        type = "image_url",
+                        image_url = new { url = imageData }
+                    });
+                }
+                else if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    contentParts.Add(new
+                    {
+                        type = "image_url",
+                        image_url = new { url = imageUrl }
+                    });
+                }
+
+                messages.Add(new { role = "user", content = contentParts.ToArray() });
+            }
+            else
+            {
+                messages.Add(new { role = "user", content = userPrompt });
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Build system prompt for plant diagnosis 
+        /// </summary>
+        private string BuildSystemPrompt(string language)
+        {
+            var Issuer = _jwtSettings.Issuer ?? "System";
+            var languageInstruction = language == "vi"
+                ? "Tra loi bang tieng Viet."
+                : "Respond in English.";
+
+            return $@"Ban la chuyen gia chan doan benh cay trong voi nhieu nam kinh nghiem cua {Issuer}.
+
+{languageInstruction}
+
+Tra loi theo format JSON chinh xac nhu sau (KHONG co text khac ngoai JSON):
+
+{{
+  ""plantInfo"": {{
+    ""commonName"": ""Ten thong thuong cua cay"",
+    ""scientificName"": ""Ten khoa hoc (neu biet)"",
+    ""family"": ""Ho cay (neu biet)"",
+    ""description"": ""Mo ta ngan ve cay""
+  }},
+  ""diseaseInfo"": {{
+    ""isHealthy"": true hoac false,
+    ""diseaseName"": ""Ten benh hoac 'Khoe manh' neu cay khoe"",
+    ""severity"": ""None/Low/Medium/High/Critical"",
+    ""symptoms"": [""Trieu chung 1"", ""Trieu chung 2""],
+    ""causes"": [""Nguyen nhan 1"", ""Nguyen nhan 2""],
+    ""notes"": ""Ghi chu them""
+  }},
+  ""treatment"": {{
+    ""immediateActions"": [""Hanh dong 1"", ""Hanh dong 2""],
+    ""longTermCare"": [""Cham soc 1"", ""Cham soc 2""],
+    ""preventionTips"": [""Phong ngua 1"", ""Phong ngua 2""],
+    ""wateringAdvice"": ""Huong dan tuoi nuoc"",
+    ""lightingAdvice"": ""Huong dan anh sang"",
+    ""fertilizingAdvice"": ""Huong dan bon phan""
+  }},
+  ""confidenceScore"": 85,
+  ""productKeywords"": [""phan bon"", ""thuoc tru sau""]
+}}";
+        }
+
+        /// <summary>
+        /// Build user prompt based on input
+        /// </summary>
+        private string BuildUserPrompt(string? userDescription, bool hasImage)
+        {
+            if (hasImage && !string.IsNullOrWhiteSpace(userDescription))
+            {
+                return $"Phan tich hinh anh cay nay ket hop voi mo ta: {userDescription}";
+            }
+            else if (hasImage)
+            {
+                return "Phan tich hinh anh cay nay va chan doan tinh trang suc khoe.";
+            }
+            else
+            {
+                return $"Chan doan tinh trang cay dua tren mo ta sau: {userDescription}";
+            }
+        }
+
+        /// <summary>
+        /// Build request body for Groq API
+        /// </summary>
+        private object BuildRequestBody(List<object> messages)
+        {
+            return new
+            {
+                model = _settings.Model,
+                messages = messages.ToArray(),
+                max_tokens = _settings.MaxTokens,
+                temperature = _settings.Temperature,
+                response_format = new { type = "json_object" }
+            };
+        }
+
+        /// <summary>
+        /// Build request body for Groq Chat API (no JSON format requirement)
+        /// </summary>
+        private object BuildChatRequestBody(List<object> messages)
+        {
+            return new
+            {
+                model = _settings.Model,
+                messages = messages.ToArray(),
+                max_tokens = _settings.MaxTokens,
+                temperature = _settings.Temperature
+            };
+        }
+
+        /// <summary>
+        /// Extract content from Groq response (OpenAI-compatible format)
+        /// </summary>
+        private string? ExtractContentFromResponse(string response)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(response);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var content))
+                    {
+                        var textContent = content.GetString();
+                        _logger.LogInformation("Successfully extracted content from Groq. Length: {Length}", textContent?.Length ?? 0);
+                        return textContent;
+                    }
+                }
+
+                _logger.LogWarning("Unexpected Groq response format: {Response}", response);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing Groq response");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// IChatService Implementation - Simple conversational chat (like ChatGPT)
+        /// </summary>
+        public async Task<ChatCompletionResult> GetChatResponseAsync(string message, string language = "vi")
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var result = new ChatCompletionResult
+            {
+                DebugInfo = new ChatDebugInfo
+                {
+                    Provider = "Groq",
+                    Model = _settings.Model
+                }
+            };
+
+            if (!IsAvailable())
+            {
+                _logger.LogWarning("Groq service is not available for chat");
+                result.IsSuccess = false;
+                result.ErrorMessage = "Groq service is not configured";
+                return result;
+            }
+
+            try
+            {
+                var systemPrompt = BuildChatSystemPrompt(language);
+                var messages = new List<object>
+            {
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = message }
+            };
+
+                // Use chat-specific request body (no JSON format requirement)
+                var requestBody = BuildChatRequestBody(messages);
+                var url = $"{_settings.BaseUrl}/chat/completions";
+                var jsonContent = JsonSerializer.Serialize(requestBody);
+
+                _logger.LogInformation("Calling Groq chat API. Message length: {Length}", message.Length);
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.ApiKey}");
+
+                var response = await _httpClient.PostAsync(url,
+                    new StringContent(jsonContent, Encoding.UTF8, "application/json"));
+
+                stopwatch.Stop();
+                result.DebugInfo.ResponseTimeMs = stopwatch.ElapsedMilliseconds;
+                result.DebugInfo.HttpStatusCode = (int)response.StatusCode;
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Groq chat API error: {StatusCode}", response.StatusCode);
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "Failed to get response from Groq API";
+                    return result;
+                }
+
+                var chatResponse = ExtractChatResponse(responseContent);
+                if (!string.IsNullOrWhiteSpace(chatResponse))
+                {
+                    result.IsSuccess = true;
+                    result.Response = chatResponse;
+                }
+                else
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "Failed to extract response from Groq";
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "Error in Groq chat completion");
+                result.IsSuccess = false;
+                result.ErrorMessage = ex.Message;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Build conversational system prompt (not diagnosis)
+        /// </summary>
+        private string BuildChatSystemPrompt(string language)
+        {
+            var Issuer = _jwtSettings.Issuer ?? "System";
+            var languageInstruction = language == "vi"
+                ? "Trả lời bằng tiếng Việt."
+                : "Respond in English.";
+
+            return $@"Bạn là một chuyên gia chăm sóc cây trồng thân thiện và tư vấn viên về các sản phẩm vườn của {Issuer}.
+
+{languageInstruction}
+
+Hãy trả lời theo cách tự nhiên và hội thoại, giống như một trợ lý ảo thông minh. 
+Có thể giúp người dùng về:
+- Cách chăm sóc các loại cây
+- Nhận dạng và điều trị bệnh cây
+- Gợi ý sản phẩm phù hợp từ GreenSpace
+- Trả lời các câu hỏi chung về thực vật
+
+Hãy ngắn gọn, hữu ích và thân thiện. Nếu cần thêm thông tin, hãy hỏi chi tiết.";
+        }
+
+        /// <summary>
+        /// Extract chat response text from Groq API response
+        /// </summary>
+        private string? ExtractChatResponse(string responseContent)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(responseContent);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var content))
+                    {
+                        return content.GetString();
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting chat response");
+                return null;
+            }
+        }
+    }
+}

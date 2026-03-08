@@ -1,4 +1,4 @@
-﻿using FlowerShopApp.Application.IServices;
+using FlowerShopApp.Application.IServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -24,6 +24,20 @@ namespace FlowerShopApp.Api.Controllers
 
             var history = await _chatService.GetHistoryAsync(roomId);
             return Ok(history);
+        }
+
+        [HttpPost("{roomId}/takeover")]
+        public async Task<IActionResult> Takeover(int roomId)
+        {
+            await _chatService.ToggleAIAssistanceAsync(roomId, false);
+            return Ok(new { message = "Staff has taken over the chat." });
+        }
+
+        [HttpPost("{roomId}/release")]
+        public async Task<IActionResult> Release(int roomId)
+        {
+            await _chatService.ToggleAIAssistanceAsync(roomId, true);
+            return Ok(new { message = "AI has resumed the chat." });
         }
     }
 }

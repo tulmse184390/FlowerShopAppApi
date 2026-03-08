@@ -1,4 +1,4 @@
-﻿using FlowerShopApp.Application.DTOs.Chat;
+using FlowerShopApp.Application.DTOs.Chat;
 
 namespace FlowerShopApp.Application.IServices
 {
@@ -8,5 +8,8 @@ namespace FlowerShopApp.Application.IServices
         Task SaveMessageAsync(int roomId, string senderRole, string message);
 
         Task<List<ChatMessageDto>> GetHistoryAsync(int roomId);
+        
+        Task<bool> IsRoomAIAssistedAsync(int roomId);
+        Task ToggleAIAssistanceAsync(int roomId, bool isAIAssisted);
     }
 }

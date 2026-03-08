@@ -1,4 +1,4 @@
-﻿using FlowerShopApp.Domain.Entities;
+using FlowerShopApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowerShopApp.Infrastructure
@@ -184,6 +184,7 @@ namespace FlowerShopApp.Infrastructure
                 e.ToTable("chat_rooms");
                 e.HasKey(x => x.RoomId);
                 e.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                e.Property(x => x.IsAIAssisted).HasDefaultValue(true);
 
                 e.HasOne(c => c.User)
                  .WithMany(u => u.ChatRooms)
