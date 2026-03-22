@@ -4,6 +4,7 @@ namespace FlowerShopApp.Application.IServices
 {
     public interface IChatService
     {
+        Task<List<ChatRoomDto>> GetAllChatRoomsAsync();
         Task<int> GetRoomIdAsync(int userId);
         Task SaveMessageAsync(int roomId, string senderRole, string message);
 
@@ -11,5 +12,7 @@ namespace FlowerShopApp.Application.IServices
         
         Task<bool> IsRoomAIAssistedAsync(int roomId);
         Task ToggleAIAssistanceAsync(int roomId, bool isAIAssisted);
+        
+        Task<string> GetUserFullNameAsync(int userId);
     }
 }

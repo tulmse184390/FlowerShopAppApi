@@ -25,8 +25,9 @@ The seed includes:
 
 - The script does not use drop/truncate/delete operations.
 - IDs are in high ranges to reduce collisions with existing data.
-- Product image links are URL placeholders under `https://cdn.example.com/...`.
-- Replace `IMG_URL_*` placeholders in `seed_all.sql` with real image URLs when available.
+- Product image links use public demo URLs (replace with your own CDN links if needed).
+- `seed_all.sql` attempts to enable `pgcrypto` and use bcrypt (`crypt`) for user passwords.
+- If `pgcrypto` is unavailable and cannot be enabled, password hashes fall back to plain text values.
 
 ## Seeded Accounts
 
@@ -37,6 +38,8 @@ The seed includes:
 - Username: `user123`
 - Password: `User@123`
 - Role: `USER`
+
+If login fails for seeded accounts, verify that `pgcrypto` is enabled so bcrypt hashes are generated.
 
 ## Prerequisite
 

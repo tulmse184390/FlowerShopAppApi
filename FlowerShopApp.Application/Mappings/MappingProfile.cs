@@ -1,7 +1,8 @@
-﻿using AutoMapper;
+using AutoMapper;
 using FlowerShopApp.Application.DTOs.Auth;
 using FlowerShopApp.Application.DTOs.Cart;
 using FlowerShopApp.Application.DTOs.Categories;
+using FlowerShopApp.Application.DTOs.Chat;
 using FlowerShopApp.Application.DTOs.Orders;
 using FlowerShopApp.Application.DTOs.Products;
 using FlowerShopApp.Application.DTOs.Store;
@@ -54,6 +55,10 @@ namespace FlowerShopApp.Application.Mappings
                 .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => (double)src.Longitude));
 
             CreateMap<Category, CategoryDto>();    
+
+            CreateMap<ChatMessage, ChatMessageDto>();
+            CreateMap<ChatRoom, ChatRoomDto>()
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.User.FullName));    
         }
     }
 }

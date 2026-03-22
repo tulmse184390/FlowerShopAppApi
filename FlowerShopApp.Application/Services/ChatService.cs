@@ -1,3 +1,4 @@
+using AutoMapper;
 using FlowerShopApp.Application.DTOs.Chat;
 using FlowerShopApp.Application.IServices;
 using FlowerShopApp.Domain.Entities;
@@ -9,10 +10,12 @@ namespace FlowerShopApp.Application.Services
     public class ChatService : IChatService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public ChatService(IUnitOfWork unitOfWork)
+        public ChatService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<int> GetRoomIdAsync(int userId)
@@ -34,7 +37,7 @@ namespace FlowerShopApp.Application.Services
             var chatMsg = new ChatMessage
             {
                 RoomId = roomId,
-                SenderRole = senderRole,
+                SenderRole = senderRole.Length > 20 ? senderRole.Substring(0, 20) : senderRole,
                 Message = message,
                 SentAt = DateTime.UtcNow
             };
@@ -56,6 +59,12 @@ namespace FlowerShopApp.Application.Services
                 .ToListAsync();
         }
 
+        public async Task<string> GetUserFullNameAsync(int userId)
+        {
+            var user = await _unitOfWork.Users.Entities.FirstOrDefaultAsync(u => u.UserId == userId);
+            return user?.FullName ?? "Unknown User";
+        }
+
         public async Task<bool> IsRoomAIAssistedAsync(int roomId)
         {
             var room = await _unitOfWork.ChatRooms.Entities.FirstOrDefaultAsync(r => r.RoomId == roomId);
@@ -71,6 +80,14 @@ namespace FlowerShopApp.Application.Services
                 _unitOfWork.ChatRooms.Update(room);
                 await _unitOfWork.CompleteAsync();
             }
+        }
+
+        public async Task<List<ChatRoomDto>> GetAllChatRoomsAsync()
+        {
+            var rooms = await _unitOfWork.ChatRooms.Entities
+                .Include(r => r.User)
+                .ToListAsync();
+            return _mapper.Map<List<ChatRoomDto>>(rooms);
         }
     }
 }
